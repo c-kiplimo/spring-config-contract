@@ -26,7 +26,7 @@ class PublicationPipelineFunctionalTest {
     }
 
     @Test
-    fun `publishes signed artifacts and resolves an offline external consumer`() {
+    fun `publishes signed artifacts with configuration cache and resolves an offline external consumer`() {
         val central = workspace.resolve("central")
         val portal = workspace.resolve("portal")
         val thirdParty = workspace.resolve("third-party")
@@ -36,7 +36,7 @@ class PublicationPipelineFunctionalTest {
 
         try {
             val publication =
-                runProducer(
+                runProducerWithConfigurationCache(
                     producer,
                     "preparePublicationVerification",
                     "-PreleaseVersion=$TEST_VERSION",
@@ -47,6 +47,7 @@ class PublicationPipelineFunctionalTest {
                 )
 
             assertTrue(publication.output.contains("BUILD SUCCESSFUL"), publication.output)
+            assertTrue(publication.output.contains("Configuration cache entry stored."), publication.output)
             assertPublishedRuntimeMetadata(central)
             assertPluginMetadata(portal)
             assertSignedCentralArtifacts(central, signing)
@@ -74,10 +75,76 @@ class PublicationPipelineFunctionalTest {
             writeConsumer(coexistence, central, portal, thirdParty, ConsumerKind.SPRING_BOOT_AND_KOTLIN, "")
             val coexistenceResult = runConsumer(coexistence, "configContractCheck")
             assertTrue(coexistenceResult.output.contains("BUILD SUCCESSFUL"), coexistenceResult.output)
+
+            assertTrue(thirdParty.deleteRecursively(), "Could not remove the disposable third-party repository")
+            val reused =
+                runProducerWithConfigurationCache(
+                    producer,
+                    "preparePublicationVerification",
+                    "-PreleaseVersion=$TEST_VERSION",
+                    "-PcentralLikeRepository=${central.absolutePath}",
+                    "-PportalLikeRepository=${portal.absolutePath}",
+                    "-PthirdPartyRepository=${thirdParty.absolutePath}",
+                    environment = signing.environment,
+                )
+            assertEquals(0, reused.exitCode, reused.output)
+            assertTrue(reused.output.contains("Reusing configuration cache."), reused.output)
+            assertTrue(reused.output.contains(":seedThirdPartyRuntimeRepository"), reused.output)
+            assertFalse(reused.output.contains(":seedThirdPartyRuntimeRepository UP-TO-DATE"), reused.output)
+            assertThirdPartyRuntimeRepository(thirdParty)
         } finally {
             signing.destroy()
             workspace.deleteRecursively()
         }
+    }
+
+    @Test
+    fun `remote preflight reports only missing protected inputs without configuration cache problems`() {
+        val producer = workspace.resolve("producer")
+        copyProducer(producer)
+
+        val result =
+            runProducerWithConfigurationCache(
+                producer,
+                "validateRemotePublicationPreflightInputs",
+                "-PreleaseVersion=$TEST_VERSION",
+                "-PallowRemotePreflight=true",
+                environment = environmentWithoutProductionCredentials(),
+            )
+
+        assertTrue(result.exitCode != 0, result.output)
+        assertTrue(
+            result.output.contains(
+                "Remote Maven Central preflight requires protected CI secrets: " +
+                    "MAVEN_CENTRAL_USERNAME, MAVEN_CENTRAL_PASSWORD, SIGNING_KEY, SIGNING_PASSWORD.",
+            ),
+            result.output,
+        )
+        assertFalse(result.output.contains("Configuration cache problems"), result.output)
+        assertFalse(result.output.contains("cannot serialize Gradle script object references"), result.output)
+    }
+
+    @Test
+    fun `external publication validation reports a missing release version`() {
+        val producer = workspace.resolve("producer")
+        copyProducer(producer)
+
+        val result =
+            runProducerWithConfigurationCache(
+                producer,
+                "validateExternalPublicationRelease",
+                environment = environmentWithoutProductionCredentials(),
+            )
+
+        assertTrue(result.exitCode != 0, result.output)
+        assertTrue(
+            result.output.contains(
+                "External publication requires a non-blank, non-SNAPSHOT -PreleaseVersion; " +
+                    "the development default 0.1.0-SNAPSHOT is not publishable.",
+            ),
+            result.output,
+        )
+        assertFalse(result.output.contains("Configuration cache problems"), result.output)
     }
 
     private fun assertPublishedRuntimeMetadata(central: File) {
@@ -143,6 +210,18 @@ class PublicationPipelineFunctionalTest {
                     "io/github/inryeok-office/config-contract-gradle-plugin/$TEST_VERSION/" +
                         "config-contract-gradle-plugin-$TEST_VERSION.module",
                 ).isFile,
+        )
+    }
+
+    private fun assertThirdPartyRuntimeRepository(thirdParty: File) {
+        assertTrue(thirdParty.isDirectory, "Third-party repository was not rebuilt")
+        assertTrue(
+            thirdParty.walkTopDown().any { file -> file.isFile && file.extension == "pom" },
+            "Third-party repository has no Maven metadata",
+        )
+        assertTrue(
+            thirdParty.walkTopDown().any { file -> file.isFile && file.extension == "jar" },
+            "Third-party repository has no runtime artifacts",
         )
     }
 
@@ -284,6 +363,23 @@ $repositories
         vararg arguments: String,
         environment: Map<String, String>,
     ): BuildExecution = executeGradle(producer, producer, environment, *arguments, "--stacktrace", "--no-configuration-cache")
+
+    private fun runProducerWithConfigurationCache(
+        producer: File,
+        vararg arguments: String,
+        environment: Map<String, String>,
+    ): BuildExecution = executeGradle(producer, producer, environment, *arguments, "--stacktrace", "--configuration-cache")
+
+    private fun environmentWithoutProductionCredentials(): Map<String, String> =
+        System.getenv() -
+            setOf(
+                "MAVEN_CENTRAL_USERNAME",
+                "MAVEN_CENTRAL_PASSWORD",
+                "GRADLE_PUBLISH_KEY",
+                "GRADLE_PUBLISH_SECRET",
+                "SIGNING_KEY",
+                "SIGNING_PASSWORD",
+            )
 
     private fun runConsumer(
         project: File,
