@@ -1,6 +1,10 @@
 # Usage guide
 
-This guide describes how to use the v0.1 configuration contract workflow: a Gradle task that compares the configuration a Spring Boot application requires with the configuration its deployment files provide. It documents only behavior that is implemented and covered by the [sample projects](../samples/README.md). The Gradle plugin is not published, so it can be used only from a source checkout of this repository.
+This guide describes the v0.1 configuration contract workflow: a Gradle task that compares configuration a Spring Boot application requires with configuration its deployment files provide. It documents only behavior implemented and covered by the [sample projects](../samples/README.md).
+
+v0.1.0 is publicly available: the runtime modules resolve from Maven Central and the Gradle plugin resolves from the
+Gradle Plugin Portal. The [published-consumer verification](https://github.com/inryeok-office/spring-config-contract/actions/runs/39112089966)
+passed for both the default Portal resolution path and the explicit Portal-plus-Maven-Central mirror path.
 
 ## What the check does
 
@@ -12,6 +16,30 @@ This guide describes how to use the v0.1 configuration contract workflow: a Grad
 It reports a `MISSING` finding for a required key that deployment does not provide, and an `UNUSED` finding for a provided key that nothing in the application recognizes. It compares key presence only; values are never compared and never appear in the output.
 
 ## Quick Start
+
+Apply the published plugin by version in your application's `build.gradle.kts`:
+
+```kotlin
+plugins {
+    java
+    id("io.github.inryeok-office.config-contract") version "0.1.0"
+}
+
+configContract {
+    dotenvExampleFiles.from("deploy/.env.example")
+    composeFiles.from("deploy/compose.yml")
+}
+```
+
+The configured deployment input paths are relative to the project root. Every configured file must exist inside that project. Without an explicit `applicationConfigurationFiles` setting, top-level `application.properties`, `application.yml`, `application.yaml`, and their `application-<profile>` variants are discovered in the `main` resource directories.
+
+Put the deployment keys to check in the configured `.env.example` or Docker Compose `services.<name>.environment` file, then run the task explicitly; it is not attached to `check`:
+
+```bash
+./gradlew configContractCheck
+```
+
+See [findings](#findings) for how to read the result and the [end-to-end example](#end-to-end-example) for a missing-key example. For tested versions, see [compatibility](compatibility.md).
 
 ### A. Verify from a clean checkout
 
@@ -29,11 +57,11 @@ On Windows, use `gradlew.bat`. The build ends with `BUILD SUCCESSFUL` when every
 
 ### B. Try it on your own Spring project
 
-The plugin is applied by id, without a version, by including this repository as a build in your project's `settings.gradle.kts`.
+For source-checkout development, the plugin is applied by id without a version by including this repository as a build in your project's `settings.gradle.kts`.
 
 Requirements:
 
-- JDK 21 and Spring Boot 3.5.x, the targets listed in [compatibility](compatibility.md). Other versions are not claimed.
+- JDK 21 and Spring Boot 3.5.16, the versions listed in [compatibility](compatibility.md). Other Spring Boot versions are not claimed.
 - Network access, to resolve your project's Spring dependencies from the repository you declare, and the plugin's own dependencies when the included build is compiled.
 - Run Gradle with the Wrapper of the checkout you include. Other Gradle versions are not claimed.
 
@@ -208,7 +236,7 @@ General:
 - `configContractCheck` is not attached to `check`; CI must call it explicitly.
 - Only key presence is compared. Values are not compared or validated.
 - Only the `main` source set is analyzed.
-- Only Spring Boot 3.5.x and JDK 21 are targeted; see [compatibility](compatibility.md).
+- Only Spring Boot 3.5.16 and JDK 21 are claimed; see [compatibility](compatibility.md).
 
 Deployment files:
 

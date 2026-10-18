@@ -1,9 +1,11 @@
 # Publication readiness
 
-Spring Config Contract's Gradle plugin is not yet published. The current supported plugin workflow uses a source
-checkout and `pluginManagement.includeBuild`, as described in the [usage guide](usage-guide.md). The v0.1.0 runtime
-modules are available from Maven Central, but they are supporting components and do not make the plugin installable
-until the Plugin Portal publication is accepted and visible.
+v0.1.0 is released. The runtime modules are publicly resolvable from Maven Central, and
+`io.github.inryeok-office.config-contract` version `0.1.0` is publicly resolvable from the Gradle Plugin Portal.
+The protected [`verify-published` workflow](https://github.com/inryeok-office/spring-config-contract/actions/runs/39112089966)
+succeeded for both the default Portal path and the explicit Portal-plus-Maven-Central mirror path. The immutable
+release source is [`46b22505bc72e0567eccc2792fbfd01e97afde98`](https://github.com/inryeok-office/spring-config-contract/commit/46b22505bc72e0567eccc2792fbfd01e97afde98);
+the official record is the [v0.1.0 GitHub Release](https://github.com/inryeok-office/spring-config-contract/releases/tag/v0.1.0).
 
 The publication topology is an architectural decision recorded in
 [ADR-0003](decisions/0003-plugin-portal-and-maven-central-publication.md).
@@ -53,8 +55,8 @@ runtime module; there are no independently versioned modules.
 | Core runtime | Maven Central | `io.github.inryeok-office:config-contract-core:0.1.0` (published) |
 | Spring runtime | Maven Central | `io.github.inryeok-office:config-contract-spring:0.1.0` (published) |
 | Deployment runtime | Maven Central | `io.github.inryeok-office:config-contract-deployment:0.1.0` (published) |
-| Plugin implementation | Gradle Plugin Portal | `io.github.inryeok-office:config-contract-gradle-plugin:0.1.0` (not yet published) |
-| Plugin marker | Gradle Plugin Portal | `io.github.inryeok-office.config-contract:io.github.inryeok-office.config-contract.gradle.plugin:0.1.0` (not yet published) |
+| Plugin implementation | Gradle Plugin Portal | `io.github.inryeok-office:config-contract-gradle-plugin:0.1.0` (published and publicly resolvable) |
+| Plugin marker | Gradle Plugin Portal | `io.github.inryeok-office.config-contract:io.github.inryeok-office.config-contract.gradle.plugin:0.1.0` (published and publicly resolvable) |
 
 The implementation artifact uses the existing root group and Gradle project name. The marker coordinate follows
 Gradle's `plugin.id:plugin.id.gradle.plugin:plugin.version` convention and is generated from the existing plugin
@@ -75,7 +77,7 @@ different coordinates.
 
 ## Plugin Portal metadata
 
-The future Portal publication uses these concrete values:
+The submitted Portal publication uses these concrete values:
 
 | Field | Value |
 | --- | --- |
@@ -251,7 +253,7 @@ version. Never overwrite or reuse the released Central version with changed arti
 
 ## Protected Plugin Portal publication
 
-After the v0.1.0 Central artifacts are publicly resolvable, `.github/workflows/plugin-portal-publication.yml` provides
+After the v0.1.0 Central artifacts became publicly resolvable, `.github/workflows/plugin-portal-publication.yml` provides
 two separate manual operations from the protected `main` branch. Both use the `production-release` environment,
 require its reviewer approval, verify successful CI for the immutable workflow commit, and serialize work for the
 release version.
@@ -266,10 +268,10 @@ release version.
    class, runs `configContractCheck`, verifies deterministic MISSING and UNUSED diagnostics, then verifies a passing
    configuration.
 
-The initial Plugin Portal submission can require manual Portal approval. A successful `publish` operation records only
-that the submission completed; it is not evidence of a completed release. Do not retry `publish` for the same version.
-Wait for Portal acceptance, run `verify-published`, and treat any visibility or consumer failure as a partial-release
-incident. The Central artifacts remain immutable, so a changed artifact set requires a later aligned patch version.
+The initial Plugin Portal submission required Portal approval and was subsequently made public. The v0.1.0
+`verify-published` operation succeeded on the immutable release source, proving both supported public consumer paths.
+Do not retry `publish` for an already released version. The Central artifacts remain immutable, so a changed artifact
+set requires a later aligned patch version.
 
 ## Implemented local and remote-preflight boundaries
 
@@ -346,9 +348,10 @@ paths.
 
 ## Implementation boundary
 
-[Issue #55](https://github.com/inryeok-office/spring-config-contract/issues/55) owns the build configuration, metadata
-generation, isolated consumer fixture, and credential-free CI validation. A production publish, Git tag, and GitHub
-Release remain separate maintainer actions. Completing that Issue must not by itself execute any of them.
+[Issue #55](https://github.com/inryeok-office/spring-config-contract/issues/55) implemented the build configuration,
+metadata generation, isolated consumer fixture, and credential-free CI validation. [Issue #61](https://github.com/inryeok-office/spring-config-contract/issues/61)
+tracked the maintainer-authorized v0.1.0 release sequence. The production publish, `v0.1.0` tag, and GitHub Release
+are complete; future releases must still follow the same separate maintainer actions.
 
 ## References
 
