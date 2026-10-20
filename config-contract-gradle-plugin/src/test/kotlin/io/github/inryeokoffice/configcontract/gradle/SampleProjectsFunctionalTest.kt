@@ -93,6 +93,16 @@ class SampleProjectsFunctionalTest {
     }
 
     @Test
+    fun `properties-format sample passes when application properties format is used`() {
+        copySample("properties-format")
+
+        val result = run(sampleInitScript())
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(TASK)?.outcome)
+        assertTrue(result.output.contains("Configuration contract check passed: no findings"), result.output)
+    }
+
+    @Test
     fun `kotlin-binding sample reports only the Kotlin non-null parameter without a default`() {
         copySample("kotlin-binding")
 
