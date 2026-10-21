@@ -9,6 +9,6 @@ public class AppConfig {
     @Value("${app.feature.enabled}")
     private boolean featureEnabled;
 
-    @Value("${app.environment:development}")
+    @Value("${app.environment}")
     private String environment;
 }
