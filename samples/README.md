@@ -22,6 +22,7 @@ Each row is the actual output of the task, copied from a test run. Paths are rel
 | `unused-configuration` | `.env.example` and Compose provide keys that nothing consumes | `UNUSED` | failed | `Configuration contract check failed: 2 findings (2 unused)`<br>`UNUSED  LEGACY_FLAG (deploy/.env.example:3)`<br>`UNUSED  OLD_ENDPOINT (deploy/compose.yml:4)` |
 | `optional-and-default` | `@Value` defaults, a Java bean `@ConfigurationProperties`, and an `application.yml` key; deployment overrides two of them | none | success | `Configuration contract check passed: no findings` |
 | `profile-specific-configuration` | Explicitly selected `prod` profile contributes a required `API_KEY` placeholder from `application-prod.yml`, satisfied by `.env.example`; the base `application.yml` has no placeholder | none | success | `Configuration contract check passed: no findings` |
+| `properties-format` | `application.properties` format with deployment override | none | success | `Configuration contract check passed: no findings` |
 | `kotlin-binding` | Kotlin `@ConfigurationProperties` constructor: a non-null parameter without a default, a nullable one, a Kotlin default, and `@DefaultValue` | `MISSING` | failed | `Configuration contract check failed: 1 finding (1 missing)`<br>`MISSING app.mail.sender (com.example.MailProperties#sender)` |
 
 v0.1 has two finding categories, `MISSING` and `UNUSED`. A failed build exits non-zero, which is what CI observes.
